@@ -1,0 +1,103 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+[package]
+name = "mirador"
+version = "0.1.0"
+edition = "2024"
+description = "Reproductor de YouTube local: solo reproducción y suscripciones. Un binario, base local, sin cuenta ni tracking."
+authors = ["Juan Carlos Isaza <isazajuancarlos@gmail.com>"]
+license = "AGPL-3.0-or-later"
+publish = false
+readme = "README.md"
+
+[dependencies]
+# Frontal de ESCRITORIO nativo (estándar de escritorio = GTK4 puro, como boza).
+# v4_10: FileDialog (selector moderno) exige GTK >= 4.10; el sistema tiene 4.18.
+gtk = { package = "gtk4", version = "0.9", features = ["v4_10"] }
+# Canal para llevar el resultado de una tarea async del runtime al hilo de la
+# interfaz (mismo patrón que boza) — sin congelar la ventana.
+async-channel = "2"
+
+# Frontal VIEJO por WebView (axum + maud + tao/wry), tras `--features webview`.
+# OPCIONAL y NO por defecto: referencia mientras se porta a GTK; se borrará al
+# alcanzar paridad. htmx y boi van vendorizados en el binario cuando se activa.
+axum = { version = "0.8", features = ["multipart"], optional = true }
+maud = { version = "0.27", features = ["axum"], optional = true }
+tower-http = { version = "0.6", features = ["trace", "compression-gzip", "fs"], optional = true }
+# Para servir el mp4 cacheado con soporte de Range (seek) vía ServeFile.oneshot.
+tower = { version = "0.5", features = ["util"], optional = true }
+
+# Importar el subscriptions.csv de Google Takeout (campos con comas/comillas →
+# lector RFC 4180, no split(',')).
+csv = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "process", "sync", "time"] }
+
+# Una base por instancia. WAL + claves foráneas (cascada al borrar un canal).
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio", "sqlite", "chrono", "macros", "migrate",
+] }
+
+# El feed RSS de cada canal (keyless) y —de necesitarlo— proxear el stream.
+# rustls, no OpenSSL: el árbol se queda sin C.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
+# El RSS de YouTube es Atom con espacios yt:/media:; se parsea a mano con pull.
+quick-xml = "0.41"
+
+# Ventana WebView del frontal viejo (feature `webview`). WebKitGTK en Linux.
+tao = { version = "0.35", optional = true }
+wry = { version = "0.55", optional = true }
+
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[features]
+# Por defecto: GTK4 puro, ningún componente de visualización web.
+default = []
+# Frontal viejo por WebView (axum + maud + tao/wry). Opt-in, en retirada.
+webview = ["dep:axum", "dep:maud", "dep:tower", "dep:tower-http", "dep:tao", "dep:wry"]
+
+# Las DEPENDENCIAS optimizadas también en debug (estándar de nacimiento,
+# directiva 26). Cuesta cero al nacer; sirve el día que la ejecución pese.
+[profile.dev.package."*"]
+opt-level = 3
+
+# ---------------------------------------------------------------------------
+# Empaquetado RPM (openSUSE Tumbleweed / Fedora), como chuspa.
+# ---------------------------------------------------------------------------
+# El binario DEBE ir en release: en debug arranca lento y sin las
+# optimizaciones del stack. `cargo generate-rpm` toma lo de `target/release`.
+# Las .so de GTK4 (libgtk-4, gdk, pango, cairo…) las resuelve auto_req. La
+# REPRODUCCIÓN la hace GtkVideo por su backend GStreamer: yt-dlp/ffmpeg/node
+# (extracción/remux/retos JS) y los plugins GStreamer H.264/AAC NO son librerías
+# enlazadas sino procesos/módulos externos, así que van como `recommends` (deps
+# débiles), NO como `requires`: en Fedora/openSUSE ffmpeg y varios plugins no
+# están en los repos por defecto (licencia), y un `requires` duro dejaría el RPM
+# sin instalar en una máquina limpia (directiva 18: probar la restricción contra
+# el cliente legítimo). Sin ellos mirador arranca y la lista funciona; el video
+# no decodifica hasta instalarlos (directiva 20). bgutil-pot (PoToken, opcional)
+# no está en repos: se documenta.
+[package.metadata.generate-rpm]
+summary = "Reproductor de YouTube local (reproduccion + suscripciones)"
+license = "AGPL-3.0-or-later"
+assets = [
+  { source = "target/release/mirador", dest = "/usr/bin/mirador", mode = "755" },
+  { source = "empaque/mirador.desktop", dest = "/usr/share/applications/mirador.desktop", mode = "644" },
+  { source = "empaque/mirador.svg", dest = "/usr/share/icons/hicolor/scalable/apps/mirador.svg", mode = "644" },
+  { source = "NOTICE", dest = "/usr/share/doc/mirador/NOTICE", mode = "644" },
+  { source = "README.md", dest = "/usr/share/doc/mirador/README.md", mode = "644" },
+]
+# yt-dlp extrae; ffmpeg remuxea; node resuelve los retos JS de yt-dlp; los
+# plugins GStreamer decodifican el mp4 en GtkVideo. Deps DÉBILES (no `requires`):
+# ver el comentario de arriba.
+[package.metadata.generate-rpm.recommends]
+yt-dlp = "*"
+ffmpeg = "*"
+nodejs = "*"
+"gstreamer1-plugins-good" = "*"
+"gstreamer1-plugins-bad-free" = "*"
+"gstreamer1-libav" = "*"

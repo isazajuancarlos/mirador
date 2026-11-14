@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Mirador
+GenericName=YouTube Player
+GenericName[es]=Reproductor de YouTube
+Comment=Local YouTube player: video playback and subscriptions, no account, no tracking
+Comment[es]=Reproductor de YouTube local: reproducción y suscripciones, sin cuenta ni tracking
+Exec=mirador
+Icon=mirador
+Terminal=false
+Categories=AudioVideo;Player;Video;
+Keywords=youtube;video;reproductor;suscripciones;feed;
+StartupNotify=true
+SingleMainWindow=true

@@ -1,0 +1,20 @@
+mirador
+Copyright (c) 2026 Juan Carlos Isaza
+
+Reproductor de YouTube local: solo reproducción y suscripciones.
+
+Licencia: AGPL-3.0-or-later (ver LICENSE).
+
+Autoría: Isaza Arenas. "Xiliux" es la marca de software; no es persona jurídica.
+
+Inspirado conceptualmente en FreeTube (https://github.com/FreeTubeApp/FreeTube,
+AGPL-3.0) SOLO en el conjunto de funciones (reproducción + suscripciones):
+mirador es un desarrollo desde cero con nuestro propio stack (Rust + axum +
+SQLx/SQLite + maud/htmx), sin código derivado de FreeTube.
+
+Piezas de terceros vendorizadas:
+  - htmx 2.0.4 (MIT), en estaticos/htmx.min.js.
+  - boi (micro-librería propia, MIT), en estaticos/boi.js.
+
+La extracción de streams la realiza yt-dlp (Unlicense), invocado como proceso
+externo; no se distribuye con mirador.
